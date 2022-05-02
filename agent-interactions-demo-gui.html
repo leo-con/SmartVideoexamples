@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1, shrink-to-fit=no" name="viewport"><!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet">
+
+    <title>Smart Video Interactions API</title>
+</head>
+
+<body>
+    <h1>Smart Video Interactions API</h1>
+
+      <div class="main">
+         <div class="col-md-6 col-sm-12">
+            <div class="login-form">
+               <form>
+                  <div class="form-group">
+                     <label>From</label>
+                     <input id="fromdate" type="date" class="form-control" placeholder="From Date">
+                  </div>
+                  <div class="form-group">
+                     <label>To</label>
+                     <input id="todate" type="date" class="form-control" placeholder="To Date">
+                  </div>
+                  <div class="form-group">
+                     <label>Single Agent ID</label>
+                     <input id="singleexternal" type="text" class="form-control" placeholder="">
+                  </div>
+                  <button type="button" id="getdata" class="btn btn-primary">Get</button> 
+               </form>
+            </div>
+         </div>
+      </div>
+
+
+    <hr>
+
+    <nav aria-label="Page navigation example">
+        <ul class="pagination">
+        </ul>
+    </nav>
+
+
+    <div>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+
+                    <th scope="col">Agent Id</th>
+
+                    <th scope="col">SmartVideo Interraction</th>
+
+                    <th scope="col">Genesys Interaction</th>
+
+                    <th scope="col">SV Calls</th>
+
+                    <th scope="col">Recordings</th>
+                </tr>
+            </thead>
+
+
+            <tbody id="myTable">
+            </tbody>
+        </table>
+    </div>
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.js">
+    </script> 
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js">
+    </script> 
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js">
+    </script>
+
+    <table class="table" style="display:none;">
+        <thead>
+            <tr>
+                <th scope="col">#</th>
+
+                <th scope="col">Agent Id</th>
+
+                <th scope="col">SmartVideo Interraction</th>
+
+                <th scope="col">Genesys Interaction</th>
+
+                <th scope="col">SV Calls</th>
+
+                <th scope="col">Recordings</th>
+            </tr>
+        </thead>
+
+
+        <tbody id="template">
+            <tr style="display:hidden;">
+                <th class="n" scope="row">
+                </th>
+
+                <td class="s">
+                </td>
+
+                <td class="a">
+                </td>
+
+                <td class="b">
+                </td>
+
+                <td class="c">
+                </td>
+
+                 <td class="d">
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+
+    <div>
+        <script>
+var serverUrl = 'https://staging.leadsecure.com';
+var shortUrl, tenantId;
+
+var pak = '72884930-79d1-3221-166d-58b3a9894e16';
+var externalId = 'Home';
+var email = 'slav@videoengager.com';
+var tennantId = 'gUqxNu7JS8y94T9F'; //'oIiTR2XQIkb7p0ub';
+
+var selectedPage = 1;
+var pageSize = 10;
+
+var from = "";
+var to = "";
+
+var token = "";
+
+var setTime = function() {
+    to = (new Date).setDate((new Date).getDate() + 1).valueOf();
+    from = (new Date).setDate((new Date).getDate() - 1).valueOf();
+
+    $('#fromdate').val(moment(from).format('YYYY-MM-DD'));
+    $('#todate').val(moment(to).format('YYYY-MM-DD'));
+}
+
+
+
+var getToken = function(callback) {
+    var postData = {
+        "pak": pak,
+        "firstName": "Demo",
+        "lastName": "User",
+        "email": "demouser@videoengager.com"
+    };
+    $.ajax({
+        url: serverUrl + "/api/partners/impersonate/" + pak + "/" + externalId + "/" + email,
+        type: 'GET',
+        success: callback,
+        error: function(err) {
+            console.log('error', err);
+        }
+    });
+}
+
+var getFromDate = function()  {
+    return (new Date($('#fromdate').val())).getTime();
+}
+
+var getToDate = function()  {
+    return (new Date($('#todate').val())).getTime();
+}
+
+var getAgentEmail = function()  {
+    return $('#singleexternal').val().trim();
+}
+
+
+var getSVInteractions = function(callback) {
+    $.ajax({
+        url: serverUrl + "/api/stats/interactions/tenant/" + getFromDate() + "/" + getToDate() + "?expandRecordings"  + (getAgentEmail() === "" ? "" : "&agent=" + getAgentEmail()) + "&pageSize=" +  pageSize + "&page=" + selectedPage,
+        type: 'GET',
+        cache: true,
+        beforeSend: function(xhr) {
+            xhr.setRequestHeader('Authorization', 'Bearer ' + token)
+        },
+        success: function(response) {
+            if (response) {
+                callback(response.data, response.totalCount, response.pageSize);
+            } else {
+                return;
+            }
+        },
+        error: function(err) {
+            console.log('error', err);
+        }
+    });
+}
+
+
+var getExternalInteractionsBySVInteractionId = function(interaction, index, callback) {
+    $.ajax({
+        url: serverUrl + "/api/stats/external.interactions/bySvInteractionId/" + interaction._id.interactionId,
+        type: 'GET',
+        cache: true,
+        beforeSend: function(xhr) {
+            xhr.setRequestHeader('Authorization', 'Bearer ' + token)
+        },
+        success: function(externalInteractions) {
+            callback(interaction, index, externalInteractions);
+        },
+        error: function(err) {
+            console.log('error', err);
+        }
+    });
+}
+
+
+var processSVInteractions = function(svInteractions, totalCount, pageSize) {
+    $('#myTable').html("");
+    $('.pagination').html("");
+    
+    var counter = 0;
+    for (var i = 0; i <= totalCount ; i += pageSize) {
+        counter += 1;
+        $('.pagination').append('<li class="page-item"><a class="numbers page-link" href="#">' + counter + '<\/a><\/li>  ')
+    }
+
+    $(".numbers").click(function() {
+        $('#myTable').html("");
+        selectedPage = $(this).text();
+        getList();
+    });
+   
+    loadExternalInteractions(svInteractions);
+}
+
+var getList = function() {
+    getSVInteractions(processSVInteractions);
+}
+
+var drawData = function(externalInteraction, svInteraction , index) {
+    if (!svInteraction){
+        svInteraction = {_id:{agentId:""}}
+    }
+    var $html = $($('#template').html());
+    var genesysURL = 'https://apps.mypurecloud.de/directory/#/engage/admin/interactions/' + externalInteraction.externalInteractionId
+    $html.find('.s').html(svInteraction._id.agentId);
+    $html.find('.a').html('<a href="#" class="list-group-item-action">' + externalInteraction.svInteractionId + '<\/a>');
+    $html.find('.b').html('<a href="' + genesysURL + '" target="_blank" class="list-group-item-action">' + externalInteraction.externalInteractionId + '<\/a>');
+    $html.find('.n').html(index + (selectedPage -1) * pageSize);
+    var callUrl = "";
+    var recordingURL = "";
+    if (externalInteraction) {
+        for (var j = 0; j < svInteraction.calls.length; j++) {
+            callUrl += '<a href="https://staging.leadsecure.com/brokerages/report/call/' + svInteraction.calls[j] + '/' + tennantId + '" target="_blank" class="list-group-item-action">' + svInteraction.calls[j] + '<\/a>' + "<br>"
+        }
+        $html.find('.c').html(callUrl);
+
+        for (var j = 0; j < svInteraction.expandedRecordings.length; j++) {
+            for (var f = 0;  f < svInteraction.expandedRecordings[j].files.length; f++){
+                recordingURL += '<a href="#" class="list-group-item-action">' + svInteraction.expandedRecordings[j].files[f] + '<\/a>' + "<br>";
+            }
+        }
+        $html.find('.d').html(recordingURL);
+        $html.find('.c').html(callUrl);
+        $('#myTable').append($html.prop('outerHTML'));
+    }
+}
+
+var loadExternalInteractions = function(svInteractions) {
+    for (var i = 0; i < svInteractions.length ; i++) {
+        getExternalInteractionsBySVInteractionId(svInteractions[i], i, 
+                                        function(svInteraction, index, externalInteractions) {
+            var externalInteraction;
+            if (!externalInteractions || !externalInteractions[0]){
+                externalInteraction = {svInteractionId: svInteraction._id.interactionId, externalInteractionId: ''}
+            } else {
+                externalInteraction = externalInteractions[0];
+            }
+            drawData(externalInteraction, svInteraction, index);
+        });  
+    }
+}
+
+$(document).ready(function() {
+    setTime();
+    getToken(function(data) {
+        token = data.token;
+        getList();
+    })
+
+    $( "#getdata" ).click(function() {
+        selectedPage = 1;
+        getList();
+    });
+});
+        </script>
+    </div>
+</body>
+</html>
